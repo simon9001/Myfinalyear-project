@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # front_end
 
 A new Flutter project.
@@ -14,3 +15,7 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+=======
+# Myfinalyear-project
+This is a learning management system with Augumented reality capabilities
+>>>>>>> 5378d4393fd70ea7a500c6b5adbe6ce7c9830145
