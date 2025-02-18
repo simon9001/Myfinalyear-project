@@ -3,7 +3,6 @@ import 'package:front_end/resources/auth_methods.dart';
 import 'package:front_end/resources/jitsi_meet_methods.dart';
 import 'package:front_end/utils/colors.dart';
 import 'package:front_end/widgets/meeting_option.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class VideoCallScreen extends StatefulWidget {
   const VideoCallScreen({super.key});
@@ -14,9 +13,10 @@ class VideoCallScreen extends StatefulWidget {
 
 class _VideoCallScreenState extends State<VideoCallScreen> {
   final AuthMethods _authMethods = AuthMethods();
+  final JitsiMeetMethods _jitsiMeetMethods = JitsiMeetMethods();
+
   late TextEditingController meetingIdController;
   late TextEditingController nameController;
-  final JitsiMeetMethods _jitsiMeetMethods = JitsiMeetMethods();
 
   bool isAudioMuted = true;
   bool isVideoMuted = true;
@@ -25,9 +25,14 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   void initState() {
     super.initState();
     meetingIdController = TextEditingController();
-    nameController = TextEditingController(
-      text: _authMethods.user?.displayName ?? '',
-    );
+    _initializeUsername();
+  }
+
+  /// Initialize name field with stored user role or default "Guest"
+  void _initializeUsername() async {
+    String? storedName = await _authMethods.getUserRole(); // Example usage
+    nameController = TextEditingController(text: storedName ?? "Guest");
+    setState(() {}); // Refresh UI after fetching name
   }
 
   @override
@@ -37,19 +42,34 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     super.dispose();
   }
 
+  /// Fetch authentication token
   Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    return await _authMethods.getToken();
   }
 
+  /// Join a meeting
   _joinMeeting() async {
-    await _getToken();
+    String roomName = meetingIdController.text.trim();
+    String username = nameController.text.trim();
+
+    if (roomName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Room ID cannot be empty")),
+      );
+      return;
+    }
+
+    if (username.isEmpty) {
+      username = "Guest"; // Default name if empty
+    }
+
+    await _getToken(); // Ensure token is fetched
 
     _jitsiMeetMethods.createMeeting(
-      roomName: meetingIdController.text.trim(),
+      roomName: roomName,
       isAudioMuted: isAudioMuted,
       isVideoMuted: isVideoMuted,
-      username: nameController.text.trim(),
+      username: username,
     );
   }
 

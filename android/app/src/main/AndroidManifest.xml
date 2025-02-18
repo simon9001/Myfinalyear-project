@@ -1,11 +1,14 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"> <!-- ADD THIS LINE -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" 
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ✅ Add this line to allow internet access -->
+    <uses-permission android:name="android.permission.INTERNET"/> 
 
     <application
         android:label="front_end"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        tools:replace="android:label"> <!-- ADD THIS LINE -->
+        tools:replace="android:label">
 
         <activity
             android:name=".MainActivity"

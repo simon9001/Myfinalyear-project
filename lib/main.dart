@@ -1,4 +1,3 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:front_end/resources/auth_methods.dart';
 import 'package:front_end/screens/home_screen.dart';
@@ -8,7 +7,6 @@ import 'package:front_end/utils/colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -28,8 +26,8 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/video-call': (context) => const VideoCallScreen(),
       },
-      home: StreamBuilder(
-        stream: AuthMethods().authChanges,
+      home: FutureBuilder(
+        future: AuthMethods().getToken(), // Check if token exists
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -37,11 +35,11 @@ class MyApp extends StatelessWidget {
             );
           }
 
-          if (snapshot.hasData) {
-            return const HomeScreen();
+          if (snapshot.hasData && snapshot.data != null) {
+            return const HomeScreen(); // Navigate to home if authenticated
           }
 
-          return const LoginScreen();
+          return const LoginScreen(); // Otherwise, show login
         },
       ),
     );
