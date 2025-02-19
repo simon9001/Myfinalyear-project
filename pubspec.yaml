@@ -41,6 +41,10 @@ dependencies:
   cloud_firestore: ^5.6.4
   firebase_core: ^3.11.0
   firebase_auth: ^5.4.2
+  syncfusion_flutter_charts: ^28.2.6
+  lucide_icons: ^0.257.0
+  google_fonts: ^4.0.4
+  percent_indicator: ^4.2.4
   
 
 

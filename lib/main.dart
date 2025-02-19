@@ -26,11 +26,11 @@ class MyApp extends StatelessWidget {
     if (token != null && role != null) {
       switch (role.toLowerCase()) {
         case "admin":
-          return const AdminScreen();
+          return AdminDashboard(username: "AdminUser");
         case "lecturer":
-          return const LecturerScreen();
+          return LecturerDashboard();
         case "student":
-          return const StudentScreen();
+          return StudentDashboard();
         default:
           return const LoginScreen();
       }
@@ -61,9 +61,9 @@ class MyApp extends StatelessWidget {
           ),
           home: snapshot.data ?? const LoginScreen(),
           routes: {
-            "/admin": (context) => const AdminScreen(),
-            "/lecturer": (context) => const LecturerScreen(),
-            "/student": (context) => const StudentScreen(),
+            "/admin": (context) => AdminDashboard(username: "AdminUser"),
+            "/lecturer": (context) => LecturerDashboard(),
+            "/student": (context) => StudentDashboard(),
             "/login": (context) => const LoginScreen(),
           },
         );
