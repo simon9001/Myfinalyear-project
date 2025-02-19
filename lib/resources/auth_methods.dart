@@ -3,203 +3,200 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:front_end/utils/utils.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthMethods {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final String _baseUrl = "https://backendar.onrender.com/api";
 
-  /// Get stored authentication token
+  /// Get authentication changes
+  Stream<User?> get authChanges => _auth.authStateChanges();
+
+  /// Get the current authenticated user
+  User? get user => _auth.currentUser;
+
+  /// Store authentication token securely
+  Future<void> _storeToken(String? token) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (token != null) {
+      await prefs.setString('auth_token', token);
+    }
+  }
+
+  /// Retrieve stored authentication token
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('auth_token');
   }
 
-  /// Store authentication token
-  Future<void> _storeToken(String token) async {
+  /// Store the user role in SharedPreferences
+  Future<void> _storeUserRole(String? role) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_token', token);
+    if (role != null) {
+      await prefs.setString('user_role', role);
+    }
   }
 
-  /// Store user role
-  Future<void> _storeUserRole(String role) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_role', role);
-  }
-
-  /// Get stored user role
+  /// Retrieve the stored user role
   Future<String?> getUserRole() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('user_role');
   }
 
-  /// Logout user
+  /// Clear authentication data and logout user
   Future<void> logoutUser() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     await prefs.remove('user_role');
   }
 
-  /// Login user with credentials
+  /// Login user and determine their role
   Future<bool> loginUser(
       String username, String password, BuildContext context) async {
     bool res = false;
     try {
-      final Map<String, String> headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      };
-
-      final Map<String, String> body = {
-        "username": username,
-        "password": password
-      };
-
       final response = await http.post(
         Uri.parse("$_baseUrl/login/"),
-        headers: headers,
-        body: jsonEncode(body),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"username": username, "password": password}),
       );
 
-      print("🔄 API Call: POST $_baseUrl/login/");
-      print("📤 Request Body: ${jsonEncode(body)}");
-      print("📥 Response Status: ${response.statusCode}");
-      print("📥 Raw Response Body: ${response.body}"); // Debugging step
-
-      // Ensure response is not empty before decoding
-      if (response.body.isEmpty) {
-        showSnackBar(context, "❌ Error: Empty response from server.");
-        return false;
-      }
-
-      // Check for HTML response (error pages)
-      if (response.body.startsWith("<") || response.body.contains("html")) {
-        showSnackBar(
-            context, "⚠️ Error: Server returned an unexpected HTML response.");
-        return false;
-      }
+      print("🔹 Response status: ${response.statusCode}");
+      print("🔹 Response body: ${response.body}");
 
       if (response.statusCode == 200) {
-        try {
-          final Map<String, dynamic> data = jsonDecode(response.body);
-          if (data.containsKey('access') && data.containsKey('user')) {
-            await _storeToken(data['access']);
-            await _storeUserRole(data['user']['role']);
-            showSnackBar(context, "✅ Login Successful");
-            res = true;
-          } else {
-            showSnackBar(context, "⚠️ Error: Unexpected response format.");
-          }
-        } catch (e) {
-          showSnackBar(context, "❌ Error decoding JSON response: $e");
+        final Map<String, dynamic> data = jsonDecode(response.body);
+
+        // Debugging logs
+        print("🔹 Parsed JSON: $data");
+
+        // Ensure 'access' token exists
+        String? token = data['access'];
+        if (token == null) {
+          showSnackBar(context, "Error: Token not received from server.");
+          return false;
         }
+
+        // Ensure 'user' object exists and contains 'role'
+        String? role;
+        if (data.containsKey('user')) {
+          final user = data['user'];
+          print("🔹 User Data: $user");
+
+          // Extracting role safely
+          role = user.containsKey('role') ? user['role'] : null;
+        }
+
+        if (role == null) {
+          showSnackBar(context, "Error: User role missing in response.");
+          return false;
+        }
+
+        await _storeToken(token);
+        await _storeUserRole(role);
+
+        showSnackBar(context, "Login Successful");
+
+        // Navigate to respective dashboard based on role
+        _navigateToDashboard(context, role);
+        res = true;
       } else {
-        try {
-          final Map<String, dynamic> errorData = jsonDecode(response.body);
-          showSnackBar(context, "❌ Login Failed: ${errorData['error']}");
-        } catch (e) {
-          showSnackBar(context, "❌ Error: Unable to parse server response.");
-        }
+        final errorResponse = jsonDecode(response.body);
+        String errorMessage = errorResponse.containsKey('error')
+            ? errorResponse['error']
+            : "Unknown error";
+        showSnackBar(context, "Login Failed: $errorMessage");
       }
     } catch (e) {
-      showSnackBar(context, "❌ Network Error: $e");
+      showSnackBar(context, "Error: $e");
     }
     return res;
   }
 
-  /// Register a new user
+  /// Navigate to the correct dashboard based on user role
+  void _navigateToDashboard(BuildContext context, String role) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print("🔹 Navigating to $role screen...");
+
+      String route;
+      switch (role.toLowerCase()) {
+        case "admin":
+          route = "/admin";
+          break;
+        case "lecturer":
+          route = "/lecturer";
+          break;
+        case "student":
+          route = "/student";
+          break;
+        default:
+          route = "/login";
+          showSnackBar(context, "Invalid user role received: $role");
+      }
+
+      Navigator.of(context).pushReplacementNamed(route);
+    });
+  }
+
+  /// Register new user
   Future<bool> registerUser(String username, String email, String password,
       BuildContext context) async {
     bool res = false;
     try {
-      final Map<String, String> headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      };
-
-      final Map<String, String> body = {
-        "username": username,
-        "email": email,
-        "password": password
-      };
-
       final response = await http.post(
         Uri.parse("$_baseUrl/register/"),
-        headers: headers,
-        body: jsonEncode(body),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(
+            {"username": username, "email": email, "password": password}),
       );
-
-      print("Registration Response: ${response.body}");
-
-      if (response.body.isEmpty) {
-        showSnackBar(context, "Error: Empty response from server.");
-        return false;
-      }
-
-      if (response.body.startsWith("<") || response.body.contains("html")) {
-        showSnackBar(context, "Error: Server returned an unexpected response.");
-        return false;
-      }
 
       if (response.statusCode == 201) {
         showSnackBar(context, "Registration Successful");
         res = true;
       } else {
-        try {
-          final Map<String, dynamic> errorData = jsonDecode(response.body);
-          showSnackBar(context, "Registration Failed: ${errorData['error']}");
-        } catch (e) {
-          showSnackBar(context, "Error: Unable to parse server response.");
-        }
+        final errorResponse = jsonDecode(response.body);
+        String errorMessage = errorResponse.containsKey('error')
+            ? errorResponse['error']
+            : "Unknown error";
+        showSnackBar(context, "Registration Failed: $errorMessage");
       }
     } catch (e) {
-      showSnackBar(context, "Network Error: $e");
+      showSnackBar(context, "Error: $e");
     }
     return res;
   }
 
-  /// Reset user password
+  /// Reset password request
   Future<bool> resetPassword(String email, BuildContext context) async {
     bool res = false;
     try {
-      final Map<String, String> headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      };
-
-      final Map<String, String> body = {"email": email};
-
       final response = await http.post(
         Uri.parse("$_baseUrl/password/reset/"),
-        headers: headers,
-        body: jsonEncode(body),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"email": email}),
       );
-
-      print("Password Reset Response: ${response.body}");
-
-      if (response.body.isEmpty) {
-        showSnackBar(context, "Error: Empty response from server.");
-        return false;
-      }
-
-      if (response.body.startsWith("<") || response.body.contains("html")) {
-        showSnackBar(context, "Error: Server returned an unexpected response.");
-        return false;
-      }
 
       if (response.statusCode == 200) {
         showSnackBar(context, "Password reset email sent");
         res = true;
       } else {
-        showSnackBar(context, "Failed to send password reset email");
+        final errorResponse = jsonDecode(response.body);
+        String errorMessage = errorResponse.containsKey('error')
+            ? errorResponse['error']
+            : "Unknown error";
+        showSnackBar(
+            context, "Failed to send password reset email: $errorMessage");
       }
     } catch (e) {
-      showSnackBar(context, "Network Error: $e");
+      showSnackBar(context, "Error: $e");
     }
     return res;
   }
 
-  /// Sign out user
+  /// Logout and remove user authentication data
   void signOut() async {
     try {
+      await _auth.signOut();
       await logoutUser();
     } catch (e) {
       print("Sign Out Error: $e");

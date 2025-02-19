@@ -14,15 +14,35 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
+  /// Handles user login and redirects to correct dashboard
   void _login() async {
     if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+
       String username = _usernameController.text.trim();
       String password = _passwordController.text.trim();
       bool success = await _authMethods.loginUser(username, password, context);
+
       if (success) {
-        Navigator.pushNamed(context, '/home');
+        String? role = await _authMethods.getUserRole();
+
+        // Redirect user based on role
+        if (role == "admin") {
+          Navigator.pushReplacementNamed(context, "/admin");
+        } else if (role == "lecturer") {
+          Navigator.pushReplacementNamed(context, "/lecturer");
+        } else {
+          Navigator.pushReplacementNamed(context, "/student");
+        }
       }
+
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -63,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
-                  SizedBox(height: 20),
+                  const SizedBox(height: 20),
                   TextFormField(
                     controller: _passwordController,
                     obscureText: true,
@@ -78,12 +98,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
-                  SizedBox(height: 20),
-                  CustomButton(
-                    text: 'Login',
-                    onPressed: _login,
-                  ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 20),
+                  _isLoading
+                      ? const CircularProgressIndicator()
+                      : CustomButton(
+                          text: 'Login',
+                          onPressed: _login,
+                        ),
+                  const SizedBox(height: 10),
                   CustomButton(
                     text: 'Forgot Password?',
                     onPressed: () {
