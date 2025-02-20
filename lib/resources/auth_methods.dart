@@ -43,11 +43,26 @@ class AuthMethods {
     return prefs.getString('user_role');
   }
 
+  /// Store the username in SharedPreferences
+  Future<void> _storeUsername(String? username) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (username != null) {
+      await prefs.setString('username', username);
+    }
+  }
+
+  /// Retrieve the stored username
+  Future<String?> getUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('username');
+  }
+
   /// Clear authentication data and logout user
   Future<void> logoutUser() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     await prefs.remove('user_role');
+    await prefs.remove('username');
   }
 
   /// Login user and determine their role
@@ -77,23 +92,26 @@ class AuthMethods {
           return false;
         }
 
-        // Ensure 'user' object exists and contains 'role'
+        // Ensure 'user' object exists and contains 'role' & 'username'
         String? role;
+        String? storedUsername;
         if (data.containsKey('user')) {
           final user = data['user'];
           print("🔹 User Data: $user");
 
-          // Extracting role safely
           role = user.containsKey('role') ? user['role'] : null;
+          storedUsername =
+              user.containsKey('username') ? user['username'] : null;
         }
 
-        if (role == null) {
-          showSnackBar(context, "Error: User role missing in response.");
+        if (role == null || storedUsername == null) {
+          showSnackBar(context, "Error: User data missing in response.");
           return false;
         }
 
         await _storeToken(token);
         await _storeUserRole(role);
+        await _storeUsername(storedUsername);
 
         showSnackBar(context, "Login Successful");
 

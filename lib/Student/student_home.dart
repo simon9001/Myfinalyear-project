@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
+import 'package:front_end/Student/home_screen.dart';
+import 'package:front_end/screens/login_screen.dart';
 
 void main() {
   runApp(MyApp());
@@ -15,17 +19,59 @@ class MyApp extends StatelessWidget {
         primaryColor: Colors.blueAccent,
         textTheme: GoogleFonts.poppinsTextTheme(),
       ),
-      home: StudentDashboard(),
+      home: StudentDashboard(
+          username: "Simon", studentEmail: "simon@example.com"),
     );
   }
 }
 
-class StudentDashboard extends StatelessWidget {
+class StudentDashboard extends StatefulWidget {
+  final String username;
+  final String studentEmail;
+
+  StudentDashboard({required this.username, required this.studentEmail});
+
+  @override
+  _StudentDashboardState createState() => _StudentDashboardState();
+}
+
+class _StudentDashboardState extends State<StudentDashboard> {
+  File? _profileImage;
+
+  String _getGreeting() {
+    int hour = DateTime.now().hour;
+    if (hour < 12) {
+      return "Good Morning";
+    } else if (hour < 18) {
+      return "Good Afternoon";
+    } else {
+      return "Good Evening";
+    }
+  }
+
+  Future<void> _pickProfileImage() async {
+    final pickedFile =
+        await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _profileImage = File(pickedFile.path);
+      });
+    }
+  }
+
+  void _logout(BuildContext context) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Student Dashboard",
+        title: Text("${_getGreeting()}, ${widget.username}",
             style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.blueAccent,
         elevation: 0,
@@ -36,18 +82,26 @@ class StudentDashboard extends StatelessWidget {
             DrawerHeader(
               decoration: BoxDecoration(color: Colors.blueAccent),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  CircleAvatar(
-                    radius: 35,
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.account_circle,
-                        size: 60, color: Colors.blueAccent),
+                  GestureDetector(
+                    onTap: _pickProfileImage,
+                    child: CircleAvatar(
+                      radius: 40,
+                      backgroundColor: Colors.white,
+                      backgroundImage: _profileImage != null
+                          ? FileImage(_profileImage!)
+                          : null,
+                      child: _profileImage == null
+                          ? Icon(Icons.camera_alt,
+                              size: 40, color: Colors.blueAccent)
+                          : null,
+                    ),
                   ),
                   SizedBox(height: 10),
-                  Text("Student Name",
+                  Text(widget.username,
                       style: TextStyle(color: Colors.white, fontSize: 18)),
-                  Text("student@example.com",
+                  Text(widget.studentEmail,
                       style: TextStyle(color: Colors.white70)),
                 ],
               ),
@@ -56,8 +110,19 @@ class StudentDashboard extends StatelessWidget {
             _buildDrawerItem(context, Icons.book, "My Courses"),
             _buildDrawerItem(context, Icons.science, "Virtual Labs"),
             _buildDrawerItem(context, Icons.assignment, "Assignments & Exams"),
-            _buildDrawerItem(context, Icons.videocam, "AI-Powered Classroom"),
+            _buildDrawerItem(
+              context,
+              Icons.videocam,
+              "Virtual Classroom",
+              navigateTo: HomeScreen(),
+            ),
             _buildDrawerItem(context, Icons.bar_chart, "Performance & Reports"),
+            Divider(),
+            ListTile(
+              leading: Icon(Icons.logout, color: Colors.red),
+              title: Text("Log Out", style: TextStyle(color: Colors.red)),
+              onTap: () => _logout(context),
+            ),
           ],
         ),
       ),
@@ -103,11 +168,19 @@ class StudentDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildDrawerItem(BuildContext context, IconData icon, String title) {
+  Widget _buildDrawerItem(BuildContext context, IconData icon, String title,
+      {Widget? navigateTo}) {
     return ListTile(
       leading: Icon(icon, color: Colors.blueAccent),
       title: Text(title, style: TextStyle(fontSize: 16)),
-      onTap: () {},
+      onTap: () {
+        if (navigateTo != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => navigateTo),
+          );
+        }
+      },
     );
   }
 

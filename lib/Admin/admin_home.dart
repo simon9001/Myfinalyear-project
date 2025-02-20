@@ -1,40 +1,22 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:front_end/screens/login_screen.dart'; // Import the correct login screen
-import 'package:shared_preferences/shared_preferences.dart';
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-  runApp(MyApp(isLoggedIn: isLoggedIn));
-}
-
-class MyApp extends StatelessWidget {
-  final bool isLoggedIn;
-  MyApp({required this.isLoggedIn});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
-      themeMode: ThemeMode.system,
-      home: isLoggedIn ? AdminDashboard(username: "Admin") : LoginScreen(),
-    );
-  }
-}
+import 'package:image_picker/image_picker.dart';
+import 'package:front_end/screens/login_screen.dart';
+import 'package:front_end/resources/auth_methods.dart';
 
 class AdminDashboard extends StatefulWidget {
   final String username;
-  AdminDashboard({required this.username});
+  final String adminId;
+
+  AdminDashboard({required this.username, required this.adminId});
 
   @override
   _AdminDashboardState createState() => _AdminDashboardState();
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
+  File? _profileImage;
+
   String getGreeting() {
     var hour = DateTime.now().hour;
     if (hour < 12) {
@@ -46,18 +28,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
+  Future<void> _pickProfileImage() async {
+    final pickedFile =
+        await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _profileImage = File(pickedFile.path);
+      });
+    }
+  }
+
   void _logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', false);
-    Navigator.pushReplacement(
-        context, MaterialPageRoute(builder: (context) => LoginScreen()));
+    await AuthMethods().logoutUser();
+    Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen()),
+        (route) => false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("${getGreeting()}, Admin ${widget.username}"),
+        title: Text("${getGreeting()}, ${widget.username}"),
         actions: [
           IconButton(
             icon: Icon(Icons.logout),
@@ -109,15 +102,30 @@ class _AdminDashboardState extends State<AdminDashboard> {
         padding: EdgeInsets.zero,
         children: <Widget>[
           DrawerHeader(
-            decoration: BoxDecoration(
-              color: Colors.blue,
-            ),
-            child: Text(
-              'Admin Menu',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-              ),
+            decoration: BoxDecoration(color: Colors.blue),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: _pickProfileImage,
+                  child: CircleAvatar(
+                    radius: 40,
+                    backgroundColor: Colors.white,
+                    backgroundImage: _profileImage != null
+                        ? FileImage(_profileImage!)
+                        : null,
+                    child: _profileImage == null
+                        ? Icon(Icons.camera_alt,
+                            size: 40, color: Colors.blueAccent)
+                        : null,
+                  ),
+                ),
+                SizedBox(height: 10),
+                Text(widget.username,
+                    style: TextStyle(color: Colors.white, fontSize: 18)),
+                Text("Admin ID: ${widget.adminId}",
+                    style: TextStyle(color: Colors.white70)),
+              ],
             ),
           ),
           ListTile(
@@ -156,9 +164,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
               leading: Icon(Icons.timelapse),
               title: Text('Manage Sessions'),
               onTap: () => Navigator.pop(context)),
+          Divider(),
           ListTile(
-              leading: Icon(Icons.logout),
-              title: Text('Logout'),
+              leading: Icon(Icons.logout, color: Colors.red),
+              title: Text('Logout', style: TextStyle(color: Colors.red)),
               onTap: _logout),
         ],
       ),
@@ -199,10 +208,4 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
   }
-}
-
-class DataPoint {
-  final String label;
-  final double value;
-  DataPoint(this.label, this.value);
 }
