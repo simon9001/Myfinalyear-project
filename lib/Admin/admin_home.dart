@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:front_end/screens/login_screen.dart';
 import 'package:front_end/resources/auth_methods.dart';
+import 'package:front_end/Admin/cousemanagement.dart';
 
 class AdminDashboard extends StatefulWidget {
   final String username;
   final String adminId;
 
-  AdminDashboard({required this.username, required this.adminId});
+  const AdminDashboard(
+      {super.key, required this.username, required this.adminId});
 
   @override
   _AdminDashboardState createState() => _AdminDashboardState();
@@ -141,9 +143,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
               title: Text('Manage Students'),
               onTap: () => Navigator.pop(context)),
           ListTile(
-              leading: Icon(Icons.menu_book),
-              title: Text('Course Management'),
-              onTap: () => Navigator.pop(context)),
+            leading: Icon(Icons.menu_book),
+            title: Text('Course Management'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => CourseManagementScreen()),
+              );
+            },
+          ),
           ListTile(
               leading: Icon(Icons.science),
               title: Text('Virtual Labs Management'),

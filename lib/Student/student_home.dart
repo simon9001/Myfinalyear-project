@@ -11,6 +11,8 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -29,7 +31,8 @@ class StudentDashboard extends StatefulWidget {
   final String username;
   final String studentEmail;
 
-  StudentDashboard({required this.username, required this.studentEmail});
+  const StudentDashboard(
+      {super.key, required this.username, required this.studentEmail});
 
   @override
   _StudentDashboardState createState() => _StudentDashboardState();
